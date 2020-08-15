@@ -4,20 +4,23 @@ import {Segment, Button, Input} from 'semantic-ui-react'
 import firebase from '../../firebase'
 import FileModal from './FileModal'
 import Progressbar from './Progressbar'
+import {Picker, emojiIndex} from 'emoji-mart'
+import 'emoji-mart/css/emoji-mart.css'
 
 export default class MessageForm extends Component {
     state = {
         storageRef: firebase.storage().ref(),
         typingRef: firebase.database().ref('typing'),
         uploadTask: null,
-        uploadState: "",
+        uploadState: '',
         percentUploaded: 0,
-        message: "",
+        message: '',
         channel: this.props.currentChannel,
         user: this.props.currentUser,
         loading: false,
         errors: [],
-        modal: false
+        modal: false,
+        emojiPicker: false
     }
 
     openModal = () => this.setState({ modal: true })
@@ -43,6 +46,35 @@ export default class MessageForm extends Component {
         }
     }
 
+    handleTogglePicker = () => {
+        this.setState({emojiPicker: !this.state.emojiPicker})
+    }
+
+    handleAddEmoji = emoji => {
+        const oldMessage = this.state.message
+        const newMessage = this.colonToUnicode(`${oldMessage} ${emoji.colons} `)
+        this.setState({
+            message: newMessage,
+            emojiPicker: false
+        })
+        setTimeout(() => this.messageInputRef.focus(), 0)
+    }
+
+    colonToUnicode = message => {
+        return message.replace(/:[A-Za-z0-9_+-]+:/g, x => {
+          x = x.replace(/:/g, '')
+          let emoji = emojiIndex.emojis[x]
+          if (typeof emoji !== 'undefined') {
+            let unicode = emoji.native
+            if (typeof unicode !== 'undefined') {
+              return unicode
+            }
+          }
+          x = ':' + x + ':'
+          return x
+        })
+      }
+
     createMessage = (fileUrl = null) => {
         const message = {
             timestamp: firebase.database.ServerValue.TIMESTAMP,
@@ -53,9 +85,9 @@ export default class MessageForm extends Component {
             }
         }
         if (fileUrl !== null) {
-            message["image"] = fileUrl
+            message['image'] = fileUrl
         } else {
-            message["content"] = this.state.message
+            message['content'] = this.state.message
         }
         return message
     }
@@ -71,14 +103,14 @@ export default class MessageForm extends Component {
                 .push()
                 .set(this.createMessage())
                 .then(() => {
-                    this.setState({ loading: false, message: "", errors: [] })
+                    this.setState({ loading: false, message: '', errors: [] })
                     typingRef
                     .child(channel.id)
                     .child(user.uid)
                     .remove()
                 })
                 .catch(err => {
-                    console.error(err);
+                    console.error(err)
                     this.setState({
                         loading: false,
                         errors: this.state.errors.concat(err)
@@ -86,7 +118,7 @@ export default class MessageForm extends Component {
                 })
         } else {
             this.setState({
-                errors: this.state.errors.concat({ message: "Ajouter un message" })
+                errors: this.state.errors.concat({ message: 'Ajouter un message' })
             })
         }
     }
@@ -106,12 +138,12 @@ export default class MessageForm extends Component {
 
         this.setState(
         {
-            uploadState: "uploading",
+            uploadState: 'uploading',
             uploadTask: this.state.storageRef.child(filePath).put(file, metadata)
         },
         () => {
             this.state.uploadTask.on(
-            "state_changed",
+            'state_changed',
             snap => {
                 const percentUploaded = Math.round(
                 (snap.bytesTransferred / snap.totalBytes) * 100
@@ -123,9 +155,9 @@ export default class MessageForm extends Component {
                 console.error(err)
                 this.setState({
                 errors: this.state.errors.concat(err),
-                uploadState: "error",
+                uploadState: 'error',
                 uploadTask: null
-                });
+                })
             },
             () => {
                 this.state.uploadTask.snapshot.ref
@@ -137,7 +169,7 @@ export default class MessageForm extends Component {
                     console.error(err)
                     this.setState({
                     errors: this.state.errors.concat(err),
-                    uploadState: "error",
+                    uploadState: 'error',
                     uploadTask: null
                     })
                 })
@@ -151,10 +183,10 @@ export default class MessageForm extends Component {
             .push()
             .set(this.createMessage(fileUrl))
             .then(() => {
-                this.setState({ uploadState: "done" })
+                this.setState({ uploadState: 'done' })
             })
             .catch(err => {
-                console.error(err);
+                console.error(err)
                 this.setState({
                     errors: this.state.errors.concat(err)
                 })
@@ -162,42 +194,57 @@ export default class MessageForm extends Component {
     }
 
     render() {
-        const { errors, message, loading, modal, uploadState, percentUploaded } = this.state
+        const { errors, message, loading, modal, uploadState, percentUploaded, emojiPicker } = this.state
 
         return (
-            <Segment className="message__form">
+            <Segment className='message__form'>
+                {emojiPicker && (
+                    <Picker 
+                        set='apple'
+                        className='emojipicker'
+                        onSelect={this.handleAddEmoji}
+                        title='Choisis ton emoji'
+                        emoji='point-up'
+                    />
+                )}
                 <Input
                     fluid
-                    name="message"
+                    name='message'
                     onChange={this.handleChange}
                     onKeyDown={this.handleKeyDown}
                     value={message}
-                    style={{ marginBottom: "0.7em" }}
-                    label={<Button icon={"add"} />}
-                    labelPosition="left"
+                    ref={node => (this.messageInputRef = node)}
+                    style={{ marginBottom: '0.7em' }}
+                    label={
+                        <Button 
+                            icon={emojiPicker ? 'close' : 'add'} 
+                            content={emojiPicker ? 'Fermer' : null}
+                            onClick={this.handleTogglePicker} 
+                        />}
+                    labelPosition='left'
                     className={
-                        errors.some(error => error.message.includes("message"))
-                        ? "error"
-                        : ""
+                        errors.some(error => error.message.includes('message'))
+                        ? 'error'
+                        : ''
                     }
-                    placeholder="Votre message..."
+                    placeholder='Votre message...'
                 />
-                <Button.Group icon widths="2">
+                <Button.Group icon widths='2'>
                     <Button
                         onClick={this.sendMessage}
                         disabled={loading}
-                        color="orange"
-                        content="Ajouter une réponse"
-                        labelPosition="left"
-                        icon="edit"
+                        color='orange'
+                        content='Ajouter une réponse'
+                        labelPosition='left'
+                        icon='edit'
                     />
                     <Button
-                        color="teal"
+                        color='teal'
                         disabled={uploadState === 'uploading'}
                         onClick={this.openModal}
-                        content="Uploader un média"
-                        labelPosition="right"
-                        icon="cloud upload"
+                        content='Uploader un média'
+                        labelPosition='right'
+                        icon='cloud upload'
                     />
                 </Button.Group>
                 <FileModal
