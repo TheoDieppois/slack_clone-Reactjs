@@ -76,7 +76,9 @@ const UserPanel = (props) => {
     }
 
     useEffect(() => {
-        changeAvatar()
+        if(uploadedCroppedImage) {
+            changeAvatar()
+        }
     }, [uploadedCroppedImage])
 
     const changeAvatar = () => {
