@@ -122,7 +122,10 @@ class Channels extends Component {
     }
 
     removeListeners = () => {
-        this.state.channelsRef.off();
+        this.state.channelsRef.off()
+        this.state.channels.forEach(channel => {
+            this.state.messagesref.child(channel.id).off()
+        })
     }
 
     setFirstChannel = () => {

@@ -23,6 +23,14 @@ export default class MessageForm extends Component {
         emojiPicker: false
     }
 
+    componentWillUnmount() {
+        if(this.state.uploadTask !== null) {
+            this.state.uploadTask.cancel()
+            this.setState({uploadTask: null})
+        }
+    }
+    
+
     openModal = () => this.setState({ modal: true })
 
     closeModal = () => this.setState({ modal: false })
@@ -31,7 +39,11 @@ export default class MessageForm extends Component {
         this.setState({ [event.target.name]: event.target.value })
     }
 
-    handleKeyDown = () => {
+    handleKeyDown = e => {
+        if(e.keyCode === 13) {
+            this.sendMessage()
+        }
+
         const {message, typingRef, user, channel} = this.state
         if(message) {
             typingRef
@@ -125,7 +137,7 @@ export default class MessageForm extends Component {
 
     getPath = () => {
         if(this.props.isPrivateChannel) {
-            return `chat/private-${this.state.channel.id}`
+            return `chat/private/${this.state.channel.id}`
         } else {
             return 'chat/public'
         }
@@ -148,7 +160,6 @@ export default class MessageForm extends Component {
                 const percentUploaded = Math.round(
                 (snap.bytesTransferred / snap.totalBytes) * 100
                 )
-                this.props.isProgressbarVisible(percentUploaded)
                 this.setState({ percentUploaded })
             },
             err => {
